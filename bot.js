@@ -23,7 +23,7 @@ client.on('ready', () => {
     console.log('Bot connecté !');
 });
 
-client.on('message_create', async (msg) => {
+client.on('message', async (msg) => {
     console.log('Message reçu :', msg.body, 'de :', msg.from, 'type :', msg.type, 'chatId :', msg.id.remote);
     if (!msg.body) {
         console.log('Message ignoré : pas de contenu');
@@ -34,14 +34,14 @@ client.on('message_create', async (msg) => {
         return;
     }
     if (msg.body.toLowerCase().includes('@tagall')) {
-        console.log('Commande @tagall détectée dans :', msg.body);
+        console.log('Commande @tagall détectée');
         try {
             const chat = await msg.getChat();
             console.log('Chat :', chat.isGroup ? 'Groupe' : 'Privé', 'ID :', chat.id._serialized);
             if (chat.isGroup) {
                 const validMentions = chat.participants
                     .map(p => p.id._serialized)
-                    .filter(id => id && (id.endsWith('@c.us') || id.endsWith('@lid')));
+                    .filter(id => id && id.endsWith('@c.us'));
                 console.log('Participants :', chat.participants.length, 'Mentions valides :', validMentions.length);
                 if (!validMentions.length) {
                     await msg.reply('Erreur : Aucun membre valide à taguer.');
@@ -61,17 +61,26 @@ client.on('message_create', async (msg) => {
             console.log('Erreur @tagall :', error.message);
             await msg.reply('Erreur !');
         }
-    } else {
-        console.log('Aucune commande @tagall détectée');
     }
 });
 
 client.on('disconnected', (reason) => {
     console.log('Déconnecté :', reason);
-    const authPath = path.join(__dirname, '.wwebjs_auth');
-    if (fs.existsSync(authPath)) {
-        fs.rmSync(authPath, { recursive: true, force: true });
-        console.log('Session supprimée');
+    try {
+        const authPath = path.join(__dirname, '.wwebjs_auth');
+        if (fs.existsSync(authPath)) {
+            const files = fs.readdirSync(authPath, { recursive: true });
+            for (const file of files) {
+                const fullPath = path.join(authPath, file);
+                if (fs.lstatSync(fullPath).isFile()) {
+                    fs.unlinkSync(fullPath);
+                }
+            }
+            fs.rmdirSync(authPath, { recursive: true });
+            console.log('Session supprimée');
+        }
+    } catch (error) {
+        console.log('Erreur suppression session :', error.message);
     }
     setTimeout(() => client.initialize(), 5000);
 });
