@@ -24,16 +24,28 @@ client.on('ready', () => {
 });
 
 client.on('message_create', async (msg) => {
-    if (!msg.body || msg.body === 'Y’a kongossa pour vous @tagall') return;
+    console.log('Message reçu :', msg.body, 'de :', msg.from, 'type :', msg.type, 'chatId :', msg.id.remote);
+    if (!msg.body) {
+        console.log('Message ignoré : pas de contenu');
+        return;
+    }
+    if (msg.body === 'Y’a kongossa pour vous @tagall') {
+        console.log('Message ignoré : réponse du bot');
+        return;
+    }
     if (msg.body.toLowerCase().includes('@tagall')) {
+        console.log('Commande @tagall détectée dans :', msg.body);
         try {
             const chat = await msg.getChat();
+            console.log('Chat :', chat.isGroup ? 'Groupe' : 'Privé', 'ID :', chat.id._serialized);
             if (chat.isGroup) {
                 const validMentions = chat.participants
                     .map(p => p.id._serialized)
                     .filter(id => id && (id.endsWith('@c.us') || id.endsWith('@lid')));
+                console.log('Participants :', chat.participants.length, 'Mentions valides :', validMentions.length);
                 if (!validMentions.length) {
-                    await msg.reply('Erreur : Aucun membre valide.');
+                    await msg.reply('Erreur : Aucun membre valide à taguer.');
+                    console.log('Aucun membre à taguer');
                     return;
                 }
                 await chat.sendMessage('Y’a kongossa pour vous @tagall', {
@@ -43,17 +55,19 @@ client.on('message_create', async (msg) => {
                 console.log('Réponse envoyée avec', validMentions.length, 'mentions');
             } else {
                 await msg.reply('Commande uniquement pour groupes !');
+                console.log('Message ignoré : chat non-groupe');
             }
         } catch (error) {
-            console.log('Erreur @tagall :', error);
+            console.log('Erreur @tagall :', error.message);
             await msg.reply('Erreur !');
         }
+    } else {
+        console.log('Aucune commande @tagall détectée');
     }
 });
 
 client.on('disconnected', (reason) => {
     console.log('Déconnecté :', reason);
-    // Supprime la session corrompue
     const authPath = path.join(__dirname, '.wwebjs_auth');
     if (fs.existsSync(authPath)) {
         fs.rmSync(authPath, { recursive: true, force: true });
