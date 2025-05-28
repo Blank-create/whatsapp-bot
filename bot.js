@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 app.get('/', (req, res) => res.send('Bot running'));
-app.listen(process.env.PORT || 3000, () => console.log('Server on port', process.env.PORT || 3000));
+app.listen(process.env.PORT || 10000, '0.0.0.0', () => console.log('Server on port', process.env.PORT || 10000));
 
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
@@ -9,10 +9,7 @@ const qrcode = require('qrcode-terminal');
 const client = new Client({
     authStrategy: new LocalAuth({ clientId: 'whatsbot' }),
     webVersionCache: { type: 'none' },
-    puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: true
-    }
+    puppeteer: { args: ['--no-sandbox', '--disable-setuid-sandbox'], headless: true }
 });
 
 client.on('qr', (qr) => {
@@ -25,30 +22,17 @@ client.on('ready', () => {
 });
 
 client.on('message_create', async (msg) => {
-    console.log('Message reçu :', msg.body, 'de :', msg.from, 'envoyé par :', msg.author || msg.from);
-    console.log('Type de message :', msg.type);
-    if (!msg.body) {
-        console.log('Message ignoré (pas de contenu)');
-        return;
-    }
-    // Éviter la boucle infinie
-    if (msg.body === 'Y’a kongossa pour vous @tagall') {
-        console.log('Message ignoré (réponse du bot)');
-        return;
-    }
+    console.log('Message reçu :', msg.body, 'de :', msg.from);
+    if (!msg.body || msg.body === 'Y’a kongossa pour vous @tagall') return;
     if (msg.body.toLowerCase().includes('@tagall')) {
-        console.log('Commande @tagall détectée');
         try {
             const chat = await msg.getChat();
             if (chat.isGroup) {
-                console.log('C’est un groupe ! Participants :', chat.participants.length);
-                const participants = chat.participants;
-                const validMentions = participants
+                const validMentions = chat.participants
                     .map(p => p.id._serialized)
                     .filter(id => id && (id.endsWith('@c.us') || id.endsWith('@lid')));
-                console.log('Mentions valides :', validMentions.length);
-                if (validMentions.length === 0) {
-                    await msg.reply('Erreur : Aucun membre valide à taguer.');
+                if (!validMentions.length) {
+                    await msg.reply('Erreur : Aucun membre valide.');
                     return;
                 }
                 await chat.sendMessage('Y’a kongossa pour vous @tagall', {
@@ -57,21 +41,18 @@ client.on('message_create', async (msg) => {
                 });
                 console.log('Réponse envoyée avec', validMentions.length, 'mentions');
             } else {
-                console.log('Ce n’est pas un groupe');
-                await msg.reply('Cette commande ne fonctionne que dans un groupe !');
+                await msg.reply('Commande uniquement pour groupes !');
             }
         } catch (error) {
-            console.log('Erreur dans @tagall :', error.message);
-            await msg.reply('Une erreur s’est produite !');
+            console.log('Erreur @tagall :', error);
+            await msg.reply('Erreur !');
         }
-    } else {
-        console.log('Aucune commande @tagall détectée dans :', msg.body);
     }
 });
 
 client.on('disconnected', (reason) => {
-    console.log('Bot déconnecté :', reason);
-    setTimeout(() => client.initialize(), 5000); // Reconnexion après 5s
+    console.log('Déconnecté :', reason);
+    setTimeout(() => client.initialize(), 5000);
 });
 
 client.initialize();
