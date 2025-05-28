@@ -1,9 +1,18 @@
+const express = require('express');
+const app = express();
+app.get('/', (req, res) => res.send('Bot running'));
+app.listen(process.env.PORT || 3000, () => console.log('Server on port', process.env.PORT || 3000));
+
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
 const client = new Client({
+    authStrategy: new LocalAuth({ clientId: 'whatsbot' }),
     webVersionCache: { type: 'none' },
-    authStrategy: new LocalAuth({ clientId: 'whatsbot' })
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        headless: true
+    }
 });
 
 client.on('qr', (qr) => {
@@ -17,7 +26,6 @@ client.on('ready', () => {
 
 client.on('message_create', async (msg) => {
     console.log('Message reçu :', msg.body, 'de :', msg.from, 'envoyé par :', msg.author || msg.from);
-    console.log('Contenu brut du message :', JSON.stringify(msg.body));
     console.log('Type de message :', msg.type);
     if (!msg.body) {
         console.log('Message ignoré (pas de contenu)');
@@ -63,7 +71,7 @@ client.on('message_create', async (msg) => {
 
 client.on('disconnected', (reason) => {
     console.log('Bot déconnecté :', reason);
-    client.initialize();
+    setTimeout(() => client.initialize(), 5000); // Reconnexion après 5s
 });
 
 client.initialize();
